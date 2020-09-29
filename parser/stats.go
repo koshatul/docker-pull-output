@@ -117,6 +117,7 @@ func (p *ProcessingStats) appendWithLock(field *[]string, chg StatusChange) {
 }
 
 // Run processes the queue until there are no messages left.
+//nolint: funlen // not worth splitting up switch, it's more readable here.
 func (p *ProcessingStats) Run(ctx context.Context, processingQueue chan StatusChange) {
 	for chg := range processingQueue {
 		if chg.LayerName != "" {
@@ -171,7 +172,6 @@ func (p *ProcessingStats) Run(ctx context.Context, processingQueue chan StatusCh
 			p.removeLayerInprogress(chg.LayerName)
 			p.Print()
 		}
-
 	}
 }
 
