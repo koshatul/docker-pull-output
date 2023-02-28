@@ -1,5 +1,6 @@
-GO_MATRIX_OS ?= darwin linux windows
-GO_MATRIX_ARCH ?= amd64
+GO_MATRIX += darwin/amd64 darwin/arm64
+GO_MATRIX += linux/amd64 linux/arm64
+GO_MATRIX += windows/amd64
 
 APP_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_HASH ?= $(shell git show -s --format=%h)
@@ -14,16 +15,21 @@ endif
 
 -include .makefiles/Makefile
 -include .makefiles/pkg/go/v1/Makefile
+-include .makefiles/ext/na4ma4/lib/golangci-lint/v1/Makefile
+-include .makefiles/ext/na4ma4/lib/goreleaser/v1/Makefile
+
+.makefiles/ext/na4ma4/%: .makefiles/Makefile
+	@curl -sfL https://raw.githubusercontent.com/na4ma4/makefiles-ext/main/v1/install | bash /dev/stdin "$@"
 
 .makefiles/%:
 	@curl -sfL https://makefiles.dev/v1 | bash /dev/stdin "$@"
 
 .PHONY: install
-install: artifacts/build/release/$(GOHOSTOS)/$(GOHOSTARCH)/docker-pull-ci
+install: artifacts/build/release/$(GOHOSTOS)/$(GOHOSTARCH)/docker-pull-output
 	install "$(<)" /usr/local/bin/
 
 .PHONY: run
-run: artifacts/build/debug/$(GOHOSTOS)/$(GOHOSTARCH)/docker-pull-ci
+run: artifacts/build/debug/$(GOHOSTOS)/$(GOHOSTARCH)/docker-pull-output
 	$< $(RUN_ARGS)
 
 .PHONY: upx
@@ -37,7 +43,7 @@ artifacts/upx/%.upx: artifacts/build/%
 test:: artifacts/test/testoutput.log
 
 .DELETE_ON_ERROR: artifacts/test/testoutput.log
-artifacts/test/testoutput.log: artifacts/build/debug/$(GOHOSTOS)/$(GOHOSTARCH)/docker-pull-ci test/testoutput.txt
+artifacts/test/testoutput.log: artifacts/build/debug/$(GOHOSTOS)/$(GOHOSTARCH)/docker-pull-output test/testoutput.txt
 	-@mkdir -p "$(@D)"
 	cat "test/testoutput.txt" | "$(<)" 2>&1 | sed -e 's/.* level=//' | tee "$(@)" > /dev/null
 	diff "$(@)" "test/testoutput.txt.run" > /dev/null
@@ -46,38 +52,4 @@ artifacts/test/testoutput.log: artifacts/build/debug/$(GOHOSTOS)/$(GOHOSTARCH)/d
 # Linting
 ######################
 
-MISSPELL := artifacts/misspell/bin/misspell
-$(MISSPELL):
-	-@mkdir -p "$(MF_PROJECT_ROOT)/$(@D)"
-	GOBIN="$(MF_PROJECT_ROOT)/$(@D)" go get $(_MODFILEARG) github.com/client9/misspell/cmd/misspell
-
-GOLINT := artifacts/golint/bin/golint
-$(GOLINT):
-	-@mkdir -p "$(MF_PROJECT_ROOT)/$(@D)"
-	GOBIN="$(MF_PROJECT_ROOT)/$(@D)" go get $(_MODFILEARG) golang.org/x/lint/golint
-
-GOLANGCILINT := artifacts/golangci-lint/bin/golangci-lint
-$(GOLANGCILINT):
-	-@mkdir -p "$(MF_PROJECT_ROOT)/$(@D)"
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(MF_PROJECT_ROOT)/$(@D)" v1.31.0
-
-STATICCHECK := artifacts/staticcheck/bin/staticcheck
-$(STATICCHECK):
-	-@mkdir -p "$(MF_PROJECT_ROOT)/$(@D)"
-	GOBIN="$(MF_PROJECT_ROOT)/$(@D)" go get $(_MODFILEARG) honnef.co/go/tools/cmd/staticcheck
-
-.PHONY: lint
-lint:: $(MISSPELL) $(GOLINT) $(GOLANGCILINT) $(STATICCHECK)
-	go vet ./...
-	$(GOLINT) -set_exit_status ./...
-	$(MISSPELL) -w -error -locale UK ./...
-	$(GOLANGCILINT) run --enable-all ./...
-	$(STATICCHECK) -checks "all" -fail "all,-U1001" -unused.whole-program ./...
-
-
-######################
-# Preload Tools
-######################
-
-.PHONY: tools
-tools: $(MISSPELL) $(GOLINT) $(GOLANGCILINT) $(STATICCHECK)
+ci:: lint

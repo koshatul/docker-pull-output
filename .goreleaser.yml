@@ -1,0 +1,56 @@
+env:
+  - CGO_ENABLED=0
+
+before:
+  hooks:
+    - make test
+    - go generate ./...
+    - go mod tidy
+    - go mod download
+
+builds:
+  - id: docker-pull-output
+    main: ./cmd/docker-pull-output
+    binary: docker-pull-output
+    flags:
+      - -tags=release
+      - -buildmode=default
+      - -trimpath
+      - -v
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    goarm: [ '5', '6', '7' ]
+    goos: ['linux', 'darwin', 'windows']
+    goarch: ['amd64', 'arm', 'arm64']
+    ignore:
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: arm64
+
+checksum:
+  algorithm: sha256
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+nfpms:
+  -
+    id: docker-pull-output-nfpms
+    package_name: docker-pull-output
+    builds:
+      - docker-pull-output
+    homepage: https://github.com/na4ma4/docker-pull-output
+    maintainer: na4ma4 <na4ma4@users.noreply.github.com>
+    description: Docker Pull Output Parser
+    formats:
+      - apk
+      - deb
+    bindir: /usr/bin

@@ -1,4 +1,4 @@
-module github.com/koshatul/docker-pull-output
+module github.com/na4ma4/docker-pull-output
 
 go 1.15
 

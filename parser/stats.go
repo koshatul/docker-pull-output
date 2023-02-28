@@ -117,7 +117,6 @@ func (p *ProcessingStats) appendWithLock(field *[]string, chg StatusChange) {
 }
 
 // Run processes the queue until there are no messages left.
-//nolint: funlen // not worth splitting up switch, it's more readable here.
 func (p *ProcessingStats) Run(ctx context.Context, processingQueue chan StatusChange) {
 	for chg := range processingQueue {
 		if chg.LayerName != "" {
@@ -176,7 +175,8 @@ func (p *ProcessingStats) Run(ctx context.Context, processingQueue chan StatusCh
 }
 
 // Print displays the current state of the processing.
-//nolint: lll // long log output, not worth splitting over lines.
+//
+//nolint:lll // long log output, not worth splitting over lines.
 func (p *ProcessingStats) Print() {
 	p.m.RLock()
 	defer p.m.RUnlock()
